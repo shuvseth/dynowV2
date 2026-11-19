@@ -38,3 +38,4 @@ outputs/analysis_ade/
 
 # photos dropped in for the live demo
 demo_inputs/
+demo_staging/
