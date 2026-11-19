@@ -1,6 +1,6 @@
 # Phase 3: video pipeline results (2026-11-19)
 
-**Models:** segmentation `nvidia/segformer-b2-finetuned-cityscapes-1024-1024` (pretrained, unmodified); classifier `dinov2_vits14` + head from run `udot_proxy_v1` (frozen DINOv2 pretrained by Meta; head trained by us on UDOT **road** images). Device: Apple MPS. Sampling: 2 fps. Thresholds: sidewalk >= 3% of frame, mean seg confidence >= 0.6, classifier score >= 0.7 (all untuned defaults).
+**Models (results below were produced BEFORE the default segmenter changed to ADE20K and the fragmentation abstain rule were added; re-run to refresh):** segmentation `nvidia/segformer-b2-finetuned-cityscapes-1024-1024` (pretrained, unmodified); classifier `dinov2_vits14` + head from run `udot_proxy_v1` (frozen DINOv2 pretrained by Meta; head trained by us on UDOT **road** images). Device: Apple MPS. Sampling: 2 fps. Thresholds: sidewalk >= 3% of frame, mean seg confidence >= 0.6, classifier score >= 0.7 (all untuned defaults).
 
 **Footage:** three stock winter videos (1080x1920, ~30 fps) from the local Downloads folder. No project-labeled video exists yet.
 

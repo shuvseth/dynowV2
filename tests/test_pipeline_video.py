@@ -33,6 +33,20 @@ def test_decide_status_branches():
     assert decide_status(0.2, None, None, None, P)[0] == UNRELIABLE
     assert decide_status(0.2, 0.9, 0.55, "snow", P)[0] == UNCERTAIN
     assert decide_status(0.2, 0.9, 0.95, "clear", P)[0] == CLEAR
+    # fragmented mask: confident classifier must NOT override the abstention
+    assert decide_status(0.2, 0.9, 0.99, "clear", P, main_frac=0.01, main_share=0.9)[0] == UNRELIABLE
+    assert decide_status(0.2, 0.9, 0.99, "clear", P, main_frac=0.10, main_share=0.3)[0] == UNRELIABLE
+    assert decide_status(0.2, 0.9, 0.99, "clear", P, main_frac=0.10, main_share=0.9)[0] == CLEAR
+
+
+def test_mask_components():
+    from dynow_vision.pipeline import mask_components
+    m = np.zeros((100, 100), bool)
+    assert mask_components(m) == (0.0, 0.0)
+    m[10:30, 10:30] = True                      # 400 px piece
+    m[60:65, 60:65] = True                      # 25 px piece
+    frac, share = mask_components(m)
+    assert abs(frac - 0.04) < 1e-9 and abs(share - 400 / 425) < 1e-9
 
 
 def test_bbox_and_masked_crop_hides_non_sidewalk():

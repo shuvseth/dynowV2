@@ -1,6 +1,6 @@
 # Phase 2: segmentation results and limitations
 
-**Model:** `nvidia/segformer-b2-finetuned-cityscapes-1024-1024` (SegFormer, ~27M params), pretrained by NVIDIA on Cityscapes. Used as-is; **no training or fine-tuning by the Dynow team.** Class ids/names come from the model config (`road`, `sidewalk`, ...; everything else = "other"). Input is resized so the long side is 1024 px (multiple of 32), logits are upsampled to the original resolution, and masks are the argmax class.
+**Default model is now `nvidia/segformer-b2-finetuned-ade-512-512` (ADE20K); the findings below were measured with the Cityscapes model `nvidia/segformer-b2-finetuned-cityscapes-1024-1024` and have not been repeated for ADE20K.** Original model: (SegFormer, ~27M params), pretrained by NVIDIA on Cityscapes. Used as-is; **no training or fine-tuning by the Dynow team.** Class ids/names come from the model config (`road`, `sidewalk`, ...; everything else = "other"). Input is resized so the long side is 1024 px (multiple of 32), logits are upsampled to the original resolution, and masks are the argmax class.
 
 **Weights/data licensing:** Cityscapes is non-commercial research only; the HF model card lists license "other". Keep this in mind before any non-research use.
 

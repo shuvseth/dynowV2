@@ -49,6 +49,8 @@ class Params:
     sample_fps: float = 2.0
     min_sidewalk_fraction: float = 0.03   # of the frame
     min_seg_confidence: float = 0.6       # mean seg confidence inside the sidewalk mask
+    min_main_fraction: float = 0.03       # largest connected sidewalk piece, as a fraction of the frame
+    min_main_share: float = 0.5           # largest piece / all sidewalk pixels (below = scattered fragments)
     min_clf_score: float = 0.7            # below this the frame is "uncertain"
     crop_mode: str = "masked"             # masked: non-sidewalk pixels neutral grey | box: plain bbox crop (includes road)
     crop_pad: float = 0.10
@@ -76,6 +78,8 @@ class FrameResult:
     sidewalk_mask: np.ndarray | None = field(default=None, repr=False)
     crop: Image.Image | None = field(default=None, repr=False)
     severity: dict | None = None
+    main_fraction: float | None = None    # largest connected sidewalk piece / frame
+    main_share: float | None = None       # largest piece / all sidewalk pixels
 
     def to_json(self) -> dict:
         d = {k: v for k, v in self.__dict__.items() if k not in ("road_mask", "sidewalk_mask", "crop")}
@@ -89,6 +93,16 @@ def clean_mask(mask: np.ndarray, kernel: int = 5) -> np.ndarray:
         return mask.astype(bool)
     k = np.ones((kernel, kernel), np.uint8)
     return cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, k).astype(bool)
+
+
+def mask_components(mask: np.ndarray) -> tuple[float, float]:
+    """(largest connected piece / frame, largest piece / all mask pixels). (0, 0) for an empty mask."""
+    total = int(mask.sum())
+    if total == 0:
+        return 0.0, 0.0
+    _, _, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8))
+    biggest = int(stats[1:, cv2.CC_STAT_AREA].max())
+    return biggest / mask.size, biggest / total
 
 
 def mask_bbox(mask: np.ndarray, pad: float = 0.1) -> tuple[int, int, int, int] | None:
@@ -117,12 +131,18 @@ def make_crop(image: Image.Image, sidewalk_mask: np.ndarray, mode: str = "masked
 
 
 def decide_status(side_frac: float, side_conf: float | None, clf_score: float | None, clf_class: str | None,
-                  p: Params) -> tuple[str, str]:
+                  p: Params, main_frac: float | None = None, main_share: float | None = None) -> tuple[str, str]:
     """Returns (status, reason). The classifier is only consulted when the sidewalk is reliable."""
     if side_frac < p.min_sidewalk_fraction:
         return NO_SIDEWALK, f"sidewalk covers {side_frac:.1%} of frame (< {p.min_sidewalk_fraction:.1%})"
     if side_conf is None or side_conf < p.min_seg_confidence:
         return UNRELIABLE, f"mean segmentation confidence {side_conf if side_conf is None else round(side_conf, 2)} < {p.min_seg_confidence}"
+    if main_frac is not None and main_frac < p.min_main_fraction:
+        return UNRELIABLE, (f"no main sidewalk piece: largest piece is {main_frac:.1%} of frame "
+                            f"(< {p.min_main_fraction:.1%}); mask is scattered fragments")
+    if main_share is not None and main_share < p.min_main_share:
+        return UNRELIABLE, (f"sidewalk mask is fragmented: largest piece holds {main_share:.0%} of sidewalk pixels "
+                            f"(< {p.min_main_share:.0%})")
     if clf_score is None:
         return UNRELIABLE, "classifier not run"
     if clf_score < p.min_clf_score:
@@ -153,17 +173,20 @@ def analyze_frame(image: Image.Image, frame_index: int, t: float, seg: Segmenter
     side_frac = float(side.sum() / n)
     side_conf = float(res.confidence[side].mean()) if side.any() else None
 
+    main_frac, main_share = mask_components(side)
     cls = score = scores = crop = box = None
     clf_ms = 0.0
-    if side_frac >= p.min_sidewalk_fraction and side_conf is not None and side_conf >= p.min_seg_confidence:
+    if (side_frac >= p.min_sidewalk_fraction and side_conf is not None and side_conf >= p.min_seg_confidence
+            and main_frac >= p.min_main_fraction and main_share >= p.min_main_share):
         crop, box = make_crop(image, side, p.crop_mode, p.crop_pad)
         t1 = time.perf_counter()
         cls, score, scores = clf(crop)
         clf_ms = (time.perf_counter() - t1) * 1000
-    status, reason = decide_status(side_frac, side_conf, score, cls, p)
+    status, reason = decide_status(side_frac, side_conf, score, cls, p, main_frac, main_share)
     return FrameResult(frame_index, round(t, 3), status, reason, side_frac, float(road.sum() / n), side_conf,
                        cls if status in (CLEAR, SNOW, UNCERTAIN) else None, score, scores, box,
-                       round(seg_ms, 1), round(clf_ms, 1), road, side, crop)
+                       round(seg_ms, 1), round(clf_ms, 1), road, side, crop,
+                       main_fraction=round(main_frac, 4), main_share=round(main_share, 3))
 
 
 # ----------------------------------------------------------------------- drawing

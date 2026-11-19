@@ -1,6 +1,6 @@
 """Phase 2: road / sidewalk semantic segmentation with a PRETRAINED model.
 
-The model (SegFormer fine-tuned on Cityscapes by NVIDIA) is NOT trained or fine-tuned by us.
+The model (SegFormer fine-tuned on ADE20K by NVIDIA; Cityscapes version available via --model) is NOT trained or fine-tuned by us.
 Class ids and names are read from the model's own config, so road/sidewalk are found by
 name, never by a hard-coded index.
 
@@ -24,9 +24,10 @@ from .model import select_device
 from .paths import repo_path
 from .preprocessing import IMAGE_EXTENSIONS, IMAGENET_MEAN, IMAGENET_STD, load_rgb, validate_image
 
-DEFAULT_MODEL = "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"
-MODEL_NOTE = ("Pretrained SegFormer (NVIDIA) fine-tuned on Cityscapes, used as-is. Not trained by "
-              "the Dynow team. Cityscapes data/weights are licensed for non-commercial research use.")
+DEFAULT_MODEL = "nvidia/segformer-b2-finetuned-ade-512-512"
+CITYSCAPES_MODEL = "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"   # previous default; use --model to select
+MODEL_NOTE = ("Pretrained SegFormer-B2 (NVIDIA) fine-tuned on ADE20K, used as-is. Not trained by the "
+              "Dynow team. Check the ADE20K / model licence before any use beyond research.")
 
 # Standard Cityscapes colours for the 19 evaluation classes (by name, so id order is irrelevant).
 CITYSCAPES_COLORS = {

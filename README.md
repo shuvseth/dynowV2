@@ -82,7 +82,9 @@ Training refuses to start if any split has fewer images per class than `min_per_
 
 ## Phase 2: road / sidewalk segmentation (pretrained, not trained by us)
 
-Uses NVIDIA's SegFormer-B2 fine-tuned on Cityscapes via Hugging Face `transformers` (downloaded once, ~110 MB, runs on MPS or CPU). We do **not** train or fine-tune it. Cityscapes is licensed for non-commercial research only.
+Default: NVIDIA's SegFormer-B2 fine-tuned on **ADE20K** (`nvidia/segformer-b2-finetuned-ade-512-512`) via Hugging Face `transformers` (runs on MPS or CPU). The earlier Cityscapes model is still available with `--model nvidia/segformer-b2-finetuned-cityscapes-1024-1024`; on snowy sidewalks it labelled almost everything road, while ADE20K found the sidewalk strip on the one photo we compared (anecdotal, not a measured result). We do **not** train or fine-tune either. Check the ADE20K/model licence before any non-research use.
+
+Single photo with a picture of what the pipeline did (original | masks | crop the classifier saw): `python -m dynow_vision.analyze_image --image photo.jpg --checkpoint outputs/runs/udot_plus10_v1/best.pt --open`.
 
 ```bash
 pip install -r requirements.txt           # adds transformers
@@ -104,7 +106,7 @@ python -m dynow_vision.pipeline --video clip.mp4 --checkpoint outputs/runs/udot_
 
 Output in `outputs/video/<video name>/`: `annotated.mp4` (H.264, plays in QuickTime), `predictions.json` (per-frame status, scores, timestamps, per-stage ms, model identifiers, parameters, limitations), `masks/` (road + sidewalk PNGs per sampled frame), `crops/` (exact images fed to the classifier), `representative/` (one annotated frame per outcome).
 
-Per sampled frame the outcome is one of: `snow`, `clear`, `uncertain` (classifier score below threshold), `unreliable_sidewalk` (segmentation confidence too low), `no_sidewalk` (sidewalk below 3% of the frame). Only a reliable sidewalk is ever classified. In the default `masked` crop mode every non-sidewalk pixel is replaced by a neutral grey, so snow on the road cannot influence the sidewalk label. Labels are per crop, not snow pixels. Frames between samples reuse the latest result (shown as "held").
+Per sampled frame the outcome is one of: `snow`, `clear`, `uncertain` (classifier score below threshold), `unreliable_sidewalk` (segmentation confidence too low), `no_sidewalk` (sidewalk below 3% of the frame). `unreliable_sidewalk` also covers a fragmented mask: the largest connected sidewalk piece must be >= 3% of the frame and hold >= 50% of all sidewalk pixels (untuned thresholds; added after a buried sidewalk was called `clear` from a few scattered patches). Only a reliable sidewalk is ever classified. In the default `masked` crop mode every non-sidewalk pixel is replaced by a neutral grey, so snow on the road cannot influence the sidewalk label. Labels are per crop, not snow pixels. Frames between samples reuse the latest result (shown as "held").
 
 Compare with your own labels: write a CSV `frame_index,label` (`clear`/`snow`, frame indices from `predictions.json`) and pass `--labels`. Results report coverage and accuracy with abstentions shown separately. See [PHASE3.md](PHASE3.md) for measured results and limitations.
 

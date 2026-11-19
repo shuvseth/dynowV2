@@ -7,7 +7,7 @@ import pytest
 import torch
 from PIL import Image
 
-from dynow_vision.segment import (Segmenter, class_ids, collect_images, colorize, logits_to_result,
+from dynow_vision.segment import (DEFAULT_MODEL, Segmenter, class_ids, collect_images, colorize, logits_to_result,
                                   make_overlay, process, save_outputs, sidewalk_focus, summarize)
 
 ID2LABEL = {0: "road", 1: "sidewalk", 2: "building", 3: "sky"}
@@ -119,12 +119,15 @@ def test_cli_process_directory_skips_invalid(tmp_path):
 
 
 def test_real_pretrained_model_runs_and_maps_classes():
-    """Loads the real Cityscapes SegFormer (cached after first download). Synthetic input: shapes/mapping only."""
+    """Loads the real default (ADE20K) and Cityscapes SegFormers (cached after first download).
+    Synthetic input: shapes/mapping only."""
     transformers = pytest.importorskip("transformers")
-    try:
-        s = Segmenter(device="cpu", max_side=256)
-    except OSError:
-        pytest.skip("pretrained segmentation weights not available offline")
-    assert s.id2label[0] == "road" and s.id2label[1] == "sidewalk"
-    res = s.segment(make_image(size=(320, 240)))
-    assert res.label_map.shape == (240, 320) and res.label_map.max() < 19
+    from dynow_vision.segment import CITYSCAPES_MODEL
+    for name in (DEFAULT_MODEL, CITYSCAPES_MODEL):
+        try:
+            s = Segmenter(name, device="cpu", max_side=256)
+        except OSError:
+            pytest.skip("pretrained segmentation weights not available offline")
+        assert class_ids(s.id2label, "road") and class_ids(s.id2label, "sidewalk")
+        res = s.segment(make_image(size=(320, 240)))
+        assert res.label_map.shape == (240, 320) and res.road_mask.shape == (240, 320)
