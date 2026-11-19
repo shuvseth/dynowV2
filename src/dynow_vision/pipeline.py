@@ -29,9 +29,10 @@ from .severity import DEFAULT_DIR as SEVERITY_DIR, DISCLAIMER as SEVERITY_DISCLA
 
 # Frame outcomes. Only "clear" and "snow" are condition predictions.
 NO_SIDEWALK, UNRELIABLE, UNCERTAIN, CLEAR, SNOW = "no_sidewalk", "unreliable_sidewalk", "uncertain", "clear", "snow"
-STATUS_COLORS_BGR = {CLEAR: (80, 200, 80), SNOW: (255, 200, 40), UNCERTAIN: (0, 215, 255),
+SLUSH = "slush"   # only produced by a 3-class classifier checkpoint (crops3)
+STATUS_COLORS_BGR = {CLEAR: (80, 200, 80), SNOW: (255, 200, 40), SLUSH: (60, 130, 255), UNCERTAIN: (0, 215, 255),
                      UNRELIABLE: (0, 140, 255), NO_SIDEWALK: (160, 160, 160)}
-STATUS_TEXT = {CLEAR: "CLEAR", SNOW: "SNOW", UNCERTAIN: "UNCERTAIN", UNRELIABLE: "SIDEWALK UNRELIABLE",
+STATUS_TEXT = {CLEAR: "CLEAR", SNOW: "SNOW", SLUSH: "SLUSH / PATCHY", UNCERTAIN: "UNCERTAIN", UNRELIABLE: "SIDEWALK UNRELIABLE",
                NO_SIDEWALK: "NO SIDEWALK FOUND"}
 ROAD_BGR, SIDEWALK_BGR = (128, 64, 128)[::-1], (244, 35, 232)[::-1]   # Cityscapes colours, as BGR
 FILL_RGB = tuple(int(round(m * 255)) for m in IMAGENET_MEAN)           # neutral fill = ~0 after normalization
@@ -184,7 +185,7 @@ def analyze_frame(image: Image.Image, frame_index: int, t: float, seg: Segmenter
         clf_ms = (time.perf_counter() - t1) * 1000
     status, reason = decide_status(side_frac, side_conf, score, cls, p, main_frac, main_share)
     return FrameResult(frame_index, round(t, 3), status, reason, side_frac, float(road.sum() / n), side_conf,
-                       cls if status in (CLEAR, SNOW, UNCERTAIN) else None, score, scores, box,
+                       cls if status in (CLEAR, SNOW, SLUSH, UNCERTAIN) else None, score, scores, box,
                        round(seg_ms, 1), round(clf_ms, 1), road, side, crop,
                        main_fraction=round(main_frac, 4), main_share=round(main_share, 3))
 
@@ -205,7 +206,7 @@ def annotate(frame_bgr: np.ndarray, r: FrameResult, held: bool, max_side: int) -
     color = STATUS_COLORS_BGR[r.status]
     cnts, _ = cv2.findContours(side.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(out, cnts, -1, color, 2)
-    label = STATUS_TEXT[r.status] + (f"  {r.model_score:.2f}" if r.model_score is not None and r.status in (CLEAR, SNOW, UNCERTAIN) else "")
+    label = STATUS_TEXT[r.status] + (f"  {r.model_score:.2f}" if r.model_score is not None and r.status in (CLEAR, SNOW, SLUSH, UNCERTAIN) else "")
     scale = max(0.5, w / 900)
     th = max(1, round(scale * 2))
     bar_h = round(92 * scale)
@@ -276,7 +277,7 @@ def run_video(video: str | Path, out_dir: str | Path, seg: Segmenter, clf, p: Pa
     for status, (_, ann) in best.items():
         cv2.imwrite(str(out / "representative" / f"{status}.jpg"), ann)
 
-    counts = {k: sum(r.status == k for r in results) for k in (CLEAR, SNOW, UNCERTAIN, UNRELIABLE, NO_SIDEWALK)}
+    counts = {k: sum(r.status == k for r in results) for k in (CLEAR, SNOW, SLUSH, UNCERTAIN, UNRELIABLE, NO_SIDEWALK)}
     n = max(len(results), 1)
     report = {
         "video": {"path": str(Path(video).resolve()), "width": W, "height": H, "fps": fps,

@@ -28,7 +28,7 @@ from .paths import repo_path
 from .preprocessing import IMAGE_EXTENSIONS, load_rgb, validate_image
 
 COLUMNS = ["filename", "source", "license", "group", "label", "split"]
-VALID_LABELS = ("clear", "snow", "uncertain")
+VALID_LABELS = ("clear", "slush", "snow", "uncertain")   # "slush" is only used by the 3-class sidewalk-crop set (cropset.py)
 TRAIN_CLASSES = ("clear", "snow")  # uncertain is excluded from the binary experiment
 SPLITS = ("train", "val", "test")
 DEFAULT_MANIFEST = "data/annotations/manifest.csv"
@@ -88,7 +88,7 @@ def validate_rows(rows: list[dict], raw_dir: str | Path | None = DEFAULT_RAW,
             problems.append(f"line {i} ({fn}): invalid label {r['label']!r}; allowed {VALID_LABELS}")
         if r["split"] and r["split"] not in SPLITS:
             problems.append(f"line {i} ({fn}): invalid split {r['split']!r}")
-        if r["label"] in TRAIN_CLASSES:
+        if r["label"] in TRAIN_CLASSES + ("slush",):
             for col in ("source", "license", "group"):
                 if not r[col]:
                     problems.append(f"line {i} ({fn}): labeled image is missing '{col}'")
@@ -104,7 +104,7 @@ def check_split_integrity(rows: list[dict]) -> None:
     group_splits: dict[str, set[str]] = defaultdict(set)
     for r in rows:
         if r["split"]:
-            if r["label"] not in TRAIN_CLASSES:
+            if r["label"] not in TRAIN_CLASSES + ("slush",):
                 raise ManifestError(f"{r['filename']}: label {r['label']!r} must not have a split")
             group_splits[r["group"]].add(r["split"])
     leaked = {g: s for g, s in group_splits.items() if len(s) > 1}
@@ -187,7 +187,7 @@ def add_images(inputs: list[str | Path], source: str, license: str,
 
 
 # -------------------------------------------------------------------- splitting
-def make_splits(rows: list[dict], ratios=(0.7, 0.15, 0.15), seed: int = 42) -> list[dict]:
+def make_splits(rows: list[dict], ratios=(0.7, 0.15, 0.15), seed: int = 42, classes=TRAIN_CLASSES) -> list[dict]:
     """Assign train/val/test by GROUP so frames of one video never straddle splits.
 
     Groups are stratified by their majority label and shuffled with `seed`. Each
@@ -200,7 +200,7 @@ def make_splits(rows: list[dict], ratios=(0.7, 0.15, 0.15), seed: int = 42) -> l
         r["split"] = ""
     groups: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
-        if r["label"] in TRAIN_CLASSES:
+        if r["label"] in classes:
             groups[r["group"]].append(r)
     by_class: dict[str, list[str]] = defaultdict(list)
     for g, members in groups.items():

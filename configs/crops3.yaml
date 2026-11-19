@@ -1,0 +1,20 @@
+# 3-class SIDEWALK-CROP classifier (clear / slush / snow). Frozen DINOv2 ViT-S/14 + trained head.
+# Trained on masked sidewalk crops labeled by a human (see CROPS.md), NOT on dashcam road images.
+seed: 42
+device: auto
+manifest: data/annotations/crops_manifest.csv
+raw_dir: data/raw
+classes: [clear, slush, snow]
+backbone: dinov2_vits14
+input_size: 224
+head_hidden: 0
+head_dropout: 0.2
+class_weights: balanced
+epochs: 40
+batch_size: 16
+lr: 0.001
+weight_decay: 0.01
+num_workers: 0
+output_root: outputs/runs
+run_name: null
+min_per_class: {train: 10, val: 3, test: 3}
