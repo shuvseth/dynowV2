@@ -94,6 +94,20 @@ Per image it writes `outputs/segmentation/<name>/`: `original.png`, `overlay.png
 
 **Known limitation, read before using:** on snow/ice-covered sidewalks the model often labels the sidewalk as *road* and is confident about it, so `confidence.png` does not flag it. Details and inspected examples: [SEGMENTATION.md](SEGMENTATION.md).
 
+## Phase 3: video pipeline (segmentation -> sidewalk crop -> classifier)
+
+```bash
+python -m dynow_vision.pipeline --video clip.mp4 --checkpoint outputs/runs/udot_proxy_v1/best.pt
+# useful options: --sample-fps 2  --max-frames 300  --crop-mode masked|box  --min-sidewalk-fraction 0.03
+#                 --min-seg-confidence 0.6  --min-clf-score 0.7  --labels my_labels.csv
+```
+
+Output in `outputs/video/<video name>/`: `annotated.mp4` (H.264, plays in QuickTime), `predictions.json` (per-frame status, scores, timestamps, per-stage ms, model identifiers, parameters, limitations), `masks/` (road + sidewalk PNGs per sampled frame), `crops/` (exact images fed to the classifier), `representative/` (one annotated frame per outcome).
+
+Per sampled frame the outcome is one of: `snow`, `clear`, `uncertain` (classifier score below threshold), `unreliable_sidewalk` (segmentation confidence too low), `no_sidewalk` (sidewalk below 3% of the frame). Only a reliable sidewalk is ever classified. In the default `masked` crop mode every non-sidewalk pixel is replaced by a neutral grey, so snow on the road cannot influence the sidewalk label. Labels are per crop, not snow pixels. Frames between samples reuse the latest result (shown as "held").
+
+Compare with your own labels: write a CSV `frame_index,label` (`clear`/`snow`, frame indices from `predictions.json`) and pass `--labels`. Results report coverage and accuracy with abstentions shown separately. See [PHASE3.md](PHASE3.md) for measured results and limitations.
+
 ## Layout
 
 `src/dynow_vision/` code · `configs/` run configs · `data/` (images are git-ignored; manifest is tracked) · `outputs/` run artifacts (git-ignored) · `tests/`
