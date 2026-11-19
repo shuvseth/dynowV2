@@ -164,7 +164,8 @@ def classify_crop(model, ck, crop: Image.Image, device) -> tuple[str, float, dic
 
 # ----------------------------------------------------------------- per-frame logic
 def analyze_frame(image: Image.Image, frame_index: int, t: float, seg: Segmenter, clf, p: Params) -> FrameResult:
-    """clf(crop) -> (class, score, class_scores)"""
+    """clf(crop, image=, mask=) -> (class, score, class_scores). Crop-based classifiers ignore image/mask;
+    mask-pooled classifiers (pooled.py) ignore the crop."""
     t0 = time.perf_counter()
     res = seg.segment(image)
     seg_ms = (time.perf_counter() - t0) * 1000
@@ -181,7 +182,7 @@ def analyze_frame(image: Image.Image, frame_index: int, t: float, seg: Segmenter
             and main_frac >= p.min_main_fraction and main_share >= p.min_main_share):
         crop, box = make_crop(image, side, p.crop_mode, p.crop_pad)
         t1 = time.perf_counter()
-        cls, score, scores = clf(crop)
+        cls, score, scores = clf(crop, image=image, mask=side)
         clf_ms = (time.perf_counter() - t1) * 1000
     status, reason = decide_status(side_frac, side_conf, score, cls, p, main_frac, main_share)
     return FrameResult(frame_index, round(t, 3), status, reason, side_frac, float(road.sum() / n), side_conf,
@@ -326,6 +327,16 @@ def compare_with_labels(predictions_json: str | Path, labels_csv: str | Path) ->
 
 def build(checkpoint, device="auto", seg_model=DEFAULT_MODEL):
     dev = select_device(device)
+    from .pooled import is_pooled_checkpoint, load_pooled
+    if is_pooled_checkpoint(checkpoint):
+        pclf, pck = load_pooled(checkpoint, dev)
+        seg = Segmenter(seg_model, device)
+        info = {"classifier": {"model_version": f"{pck['backbone']}+pooled-logreg:{pck['run_name']}:{pck['checkpoint_sha256'][:12]}",
+                               "checkpoint": str(checkpoint), "trained_by": pck["trained_by"], "classes": pck["classes"],
+                               "device": str(dev), "type": "mask-pooled DINOv2 patch features + logistic head"},
+                "segmenter": {"model": seg_model, "device": str(seg.device), "trained_by": "pretrained (see model note)",
+                              "note": MODEL_NOTE}}
+        return seg, pclf, info
     model, ck = load_checkpoint(checkpoint, dev)
     seg = Segmenter(seg_model, device)
     info = {
@@ -335,7 +346,7 @@ def build(checkpoint, device="auto", seg_model=DEFAULT_MODEL):
         "segmenter": {"model": seg_model, "device": str(seg.device), "trained_by": "NVIDIA (pretrained, unmodified)",
                       "note": MODEL_NOTE},
     }
-    return seg, (lambda crop: classify_crop(model, ck, crop, dev)), info
+    return seg, (lambda crop, **_: classify_crop(model, ck, crop, dev)), info
 
 
 def main(argv=None):

@@ -111,6 +111,8 @@ def make_crops(images: list[Path], source: str, license_: str, seg=None, out_dir
         crop, _ = make_crop(img, side, "masked", crop_pad)
         name = f"{p.stem}.png"
         crop.save(out / name)
+        (out / "masks").mkdir(exist_ok=True)
+        Image.fromarray(side.astype(np.uint8)).save(out / "masks" / name)
         cv2.imwrite(str(prev / f"{p.stem}.jpg"), _outline_preview(img, side, crop))
         m_ = rx.match(p.stem) if rx else None
         row = {"crop": name, "source_image": p.name, "group": m_.group(1) if m_ else p.stem, "mask_source": msrc,

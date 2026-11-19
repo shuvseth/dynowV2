@@ -40,7 +40,7 @@ def _label(img: np.ndarray, text: str) -> np.ndarray:
     return out
 
 
-def make_panel(image: Image.Image, r, extra: list[str] | None = None) -> np.ndarray:
+def make_panel(image: Image.Image, r, extra: list[str] | None = None, crop_title: str = "crop the classifier saw") -> np.ndarray:
     orig = cv2.cvtColor(np.array(image.convert("RGB")), cv2.COLOR_RGB2BGR)
     over = orig.copy()
     for mask, col in ((r.road_mask, ROAD_BGR), (r.sidewalk_mask, SIDEWALK_BGR)):
@@ -58,7 +58,7 @@ def make_panel(image: Image.Image, r, extra: list[str] | None = None) -> np.ndar
         cv2.putText(crop, "no crop: classifier not run", (20, H // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
     parts = [_label(_fit(orig), "original"),
              _label(_fit(over), "road=purple sidewalk=pink box=crop"),
-             _label(_fit(crop), "crop the classifier saw")]
+             _label(_fit(crop), crop_title)]
     panel = np.hstack(parts)
     score = f" {r.predicted_class} {r.model_score:.2f}" if r.model_score is not None else ""
     extra = extra or []
@@ -93,7 +93,7 @@ def main(argv=None):
         img = load_rgb(f)
         r = analyze_frame(img, 0, 0.0, seg, clf, p)
         dest = out / f"{f.stem.replace(' ', '_')}.png"
-        cv2.imwrite(str(dest), make_panel(img, r, lookup_lines(f)))
+        cv2.imwrite(str(dest), make_panel(img, r, lookup_lines(f), "sidewalk area averaged by the model" if getattr(clf, "needs_mask", False) else "crop the classifier saw"))
         print(f"{f.name}: {r.status}" + (f" ({r.predicted_class} {r.model_score:.2f})" if r.model_score is not None else "")
               + f" -> {dest}")
         if a.open:

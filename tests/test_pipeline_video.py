@@ -17,7 +17,7 @@ INFO = {"classifier": {"model_version": "fake"}, "segmenter": {"model": "fake"}}
 
 
 def fake_clf(label="snow", score=0.9):
-    return lambda crop: (label, score, {"clear": 1 - score if label == "snow" else score, "snow": score if label == "snow" else 1 - score})
+    return lambda crop=None, **_: (label, score, {"clear": 1 - score if label == "snow" else score, "snow": score if label == "snow" else 1 - score})
 
 
 def make_video(path, n=30, fps=10, size=(160, 120)):
@@ -84,7 +84,7 @@ def test_road_snow_not_attributed_to_sidewalk():
     """The crop given to the classifier contains only sidewalk pixels (everything else neutral)."""
     img = Image.fromarray(np.full((120, 160, 3), 255, np.uint8))   # all-white 'snow' frame
     seen = []
-    analyze_frame(img, 0, 0, seg(), lambda c: seen.append(np.asarray(c)) or ("clear", 0.9, {}), Params(min_seg_confidence=0.0, crop_pad=0.0))
+    analyze_frame(img, 0, 0, seg(), lambda c=None, **_: seen.append(np.asarray(c)) or ("clear", 0.9, {}), Params(min_seg_confidence=0.0, crop_pad=0.0))
     crop = seen[0].reshape(-1, 3)
     fill = np.array([124, 116, 104])
     is_white = (crop == 255).all(1)
