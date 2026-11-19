@@ -358,15 +358,19 @@ def main(argv=None):
     ap.add_argument("--max-frames", type=int, help="stop after this many video frames (for quick tests)")
     ap.add_argument("--min-sidewalk-fraction", type=float, default=Params.min_sidewalk_fraction)
     ap.add_argument("--min-seg-confidence", type=float, default=Params.min_seg_confidence)
-    ap.add_argument("--min-clf-score", type=float, default=Params.min_clf_score)
+    ap.add_argument("--min-clf-score", type=float, default=None,
+                    help=f"decline below this score (default: the classifier's recommended value, else {Params.min_clf_score})")
+    ap.add_argument("--seg-model", default=DEFAULT_MODEL, help="segmenter: Hugging Face id or fine-tuned dir (e.g. outputs/seg_runs/seg_v1/best)")
     ap.add_argument("--crop-mode", choices=["masked", "box"], default=Params.crop_mode)
     ap.add_argument("--device", default="auto")
     ap.add_argument("--severity-dir", default=SEVERITY_DIR, help="human severity annotations (one CSV per annotator)")
     ap.add_argument("--labels", help="optional CSV (frame_index,label) of human labels to compare against")
     a = ap.parse_args(argv)
-    p = Params(a.sample_fps, a.min_sidewalk_fraction, a.min_seg_confidence, a.min_clf_score, a.crop_mode)
     out = repo_path(a.out) if a.out else repo_path("outputs/video") / Path(a.video).stem
-    seg, clf, info = build(a.checkpoint, a.device)
+    seg, clf, info = build(a.checkpoint, a.device, a.seg_model)
+    p = Params(sample_fps=a.sample_fps, min_sidewalk_fraction=a.min_sidewalk_fraction, min_seg_confidence=a.min_seg_confidence,
+               min_clf_score=a.min_clf_score if a.min_clf_score is not None else getattr(clf, "recommended_min_score", Params.min_clf_score),
+               crop_mode=a.crop_mode)
     sev = consensus_by_frame(read_annotations(a.severity_dir), Path(a.video).stem)
     rep = run_video(Path(a.video).expanduser(), out, seg, clf, p, info, a.max_frames, severity_by_frame=sev)
     print(json.dumps({"summary": rep["summary"]["counts"], "run": rep["run"], "video": rep["outputs"]}, indent=2))

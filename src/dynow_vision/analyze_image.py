@@ -88,7 +88,7 @@ def main(argv=None):
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     seg, clf, _ = build(a.checkpoint, a.device, a.seg_model)
-    p = Params()
+    p = Params(min_clf_score=getattr(clf, "recommended_min_score", Params.min_clf_score))
     for f in files:
         img = load_rgb(f)
         r = analyze_frame(img, 0, 0.0, seg, clf, p)

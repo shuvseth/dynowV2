@@ -35,3 +35,6 @@ data/segmentation/
 outputs/seg_runs/*
 outputs/analysis/
 outputs/analysis_ade/
+
+# photos dropped in for the live demo
+demo_inputs/

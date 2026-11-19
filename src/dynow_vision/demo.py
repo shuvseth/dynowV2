@@ -94,7 +94,7 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     print("loading models ...", flush=True)
     seg, clf, _ = build(str(repo_path(a.checkpoint)), a.device, str(repo_path(a.seg_model)))
-    params = Params()
+    params = Params(min_clf_score=getattr(clf, "recommended_min_score", Params.min_clf_score))
     print("ready.\n  file                                        result                          conf  sidewalk found\n", flush=True)
 
     if a.images:

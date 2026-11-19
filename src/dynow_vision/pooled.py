@@ -58,6 +58,9 @@ def extract_features(backbone, image: Image.Image, mask: np.ndarray, device, siz
 class PooledClassifier:
     """Callable used by the pipeline: clf(crop, image=..., mask=...) -> (class, score, class_scores)."""
     needs_mask = True
+    # Decline below this top-class probability. Chosen from the VALIDATION split (61% answered at 70% accuracy;
+    # 0.70 answered only 27%) because this regularised model's probabilities are soft. Not calibrated.
+    recommended_min_score = 0.6
 
     def __init__(self, backbone, payload: dict, device):
         self.backbone, self.device = backbone, device

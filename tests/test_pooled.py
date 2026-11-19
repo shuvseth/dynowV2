@@ -60,3 +60,20 @@ def test_checkpoint_roundtrip_and_pipeline_integration(tmp_path):
     assert r.status in ("clear", "slush", "snow", "uncertain", "no_sidewalk", "unreliable_sidewalk")
     if r.predicted_class:
         assert r.class_scores and abs(sum(r.class_scores.values()) - 1) < 1e-6
+
+
+def test_pooled_classifier_recommends_its_own_decline_threshold():
+    clf = pooled.PooledClassifier(FakeBackbone(), payload(), "cpu")
+    assert clf.recommended_min_score == 0.6 and clf.recommended_min_score < Params().min_clf_score
+
+
+def test_pipeline_cli_passes_arguments_to_the_right_params(tmp_path, monkeypatch):
+    """Regression: Params was once built positionally and put --min-clf-score into the wrong field."""
+    from dynow_vision import pipeline
+    seen = {}
+    monkeypatch.setattr(pipeline, "build", lambda *a, **k: (seg(), pooled.PooledClassifier(FakeBackbone(), payload(), "cpu"), {}))
+    monkeypatch.setattr(pipeline, "run_video", lambda video, out, s, c, p, info, mf=None, **k: seen.update(p=p) or {"summary": {"counts": {}}, "run": {}, "outputs": {}})
+    pipeline.main(["--video", str(tmp_path / "v.mp4"), "--checkpoint", "x.pt", "--sample-fps", "3", "--crop-mode", "box"])
+    assert seen["p"].sample_fps == 3 and seen["p"].crop_mode == "box" and seen["p"].min_clf_score == 0.6 and seen["p"].min_main_share == 0.5
+    pipeline.main(["--video", str(tmp_path / "v.mp4"), "--checkpoint", "x.pt", "--min-clf-score", "0.8"])
+    assert seen["p"].min_clf_score == 0.8
