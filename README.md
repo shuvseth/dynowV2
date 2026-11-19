@@ -3,7 +3,7 @@
 Computer vision research for detecting snow and evaluating winter sidewalk accessibility using semantic segmentation and DINOv2.
 
 **Phase 1 scope:** a two-class (`clear` vs `snow`) image classifier = frozen pretrained DINOv2 ViT-S/14 + a classification head trained by us.
-Phase 2 adds road/sidewalk segmentation with a pretrained model (below). Not in scope yet: ice, snow depth, severity, video, any UI.
+Phase 2 adds road/sidewalk segmentation with a pretrained model (below). Phases 3-4 add a video pipeline and human-assigned severity. Not in scope: ice detection, snow depth, automated severity prediction, any UI.
 
 ## Status (read this first)
 
@@ -107,6 +107,18 @@ Output in `outputs/video/<video name>/`: `annotated.mp4` (H.264, plays in QuickT
 Per sampled frame the outcome is one of: `snow`, `clear`, `uncertain` (classifier score below threshold), `unreliable_sidewalk` (segmentation confidence too low), `no_sidewalk` (sidewalk below 3% of the frame). Only a reliable sidewalk is ever classified. In the default `masked` crop mode every non-sidewalk pixel is replaced by a neutral grey, so snow on the road cannot influence the sidewalk label. Labels are per crop, not snow pixels. Frames between samples reuse the latest result (shown as "held").
 
 Compare with your own labels: write a CSV `frame_index,label` (`clear`/`snow`, frame indices from `predictions.json`) and pass `--labels`. Results report coverage and accuracy with abstentions shown separately. See [PHASE3.md](PHASE3.md) for measured results and limitations.
+
+## Phase 4: human-assigned severity (no automated severity model)
+
+A 1-5 obstruction rubric plus "not assessable" (see [SEVERITY.md](SEVERITY.md)). Severity is rated by humans and shown next to the model outputs; it is a preliminary research rubric, not an accessibility certification or a snow-depth measurement.
+
+```bash
+python -m dynow_vision.severity frames --video clip.mp4
+python -m dynow_vision.severity annotate --annotator yourname --images data/raw/severity_frames/clip
+python -m dynow_vision.severity agreement      # needs >=2 annotators on the same frames
+python -m dynow_vision.severity status
+python -m dynow_vision.pipeline --video clip.mp4 --checkpoint outputs/runs/udot_proxy_v1/best.pt   # picks up data/annotations/severity/
+```
 
 ## Layout
 

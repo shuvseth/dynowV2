@@ -25,6 +25,7 @@ from .model import load_checkpoint, select_device
 from .paths import repo_path
 from .preprocessing import IMAGENET_MEAN, eval_transform
 from .segment import DEFAULT_MODEL, MODEL_NOTE, Segmenter
+from .severity import DEFAULT_DIR as SEVERITY_DIR, DISCLAIMER as SEVERITY_DISCLAIMER, RUBRIC_VERSION, consensus, consensus_by_frame, read_annotations
 
 # Frame outcomes. Only "clear" and "snow" are condition predictions.
 NO_SIDEWALK, UNRELIABLE, UNCERTAIN, CLEAR, SNOW = "no_sidewalk", "unreliable_sidewalk", "uncertain", "clear", "snow"
@@ -39,6 +40,7 @@ LIMITATIONS = [
     "The segmentation model is pretrained on Cityscapes and often labels snow/ice-covered sidewalks as road with high confidence.",
     "Predictions are per-crop labels (clear/snow); they do not locate snow pixels or measure depth. Ice is not detected.",
     "Model scores are uncalibrated softmax values.",
+    "Severity (1-5 / not assessable) is HUMAN-assigned from a preliminary rubric; there is no automated severity model. It is not a validated accessibility certification and not a snow-depth measurement.",
 ]
 
 
@@ -73,6 +75,7 @@ class FrameResult:
     road_mask: np.ndarray | None = field(default=None, repr=False)
     sidewalk_mask: np.ndarray | None = field(default=None, repr=False)
     crop: Image.Image | None = field(default=None, repr=False)
+    severity: dict | None = None
 
     def to_json(self) -> dict:
         d = {k: v for k, v in self.__dict__.items() if k not in ("road_mask", "sidewalk_mask", "crop")}
@@ -182,19 +185,25 @@ def annotate(frame_bgr: np.ndarray, r: FrameResult, held: bool, max_side: int) -
     label = STATUS_TEXT[r.status] + (f"  {r.model_score:.2f}" if r.model_score is not None and r.status in (CLEAR, SNOW, UNCERTAIN) else "")
     scale = max(0.5, w / 900)
     th = max(1, round(scale * 2))
-    bar_h = round(70 * scale)
+    bar_h = round(92 * scale)
     cv2.rectangle(out, (0, 0), (w, bar_h), (0, 0, 0), -1)
     cv2.putText(out, label, (10, round(30 * scale)), cv2.FONT_HERSHEY_SIMPLEX, scale * 0.9, color, th, cv2.LINE_AA)
     sub = f"t={r.timestamp_s:.1f}s  sidewalk {r.sidewalk_fraction:.0%}  road {r.road_fraction:.0%}" + (" (held)" if held else "")
     cv2.putText(out, sub, (10, round(58 * scale)), cv2.FONT_HERSHEY_SIMPLEX, scale * 0.55, (255, 255, 255), max(1, th - 1), cv2.LINE_AA)
-    note = "crop-level label, not snow pixels | uncalibrated score"
-    cv2.putText(out, note, (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, scale * 0.45, (230, 230, 230), 1, cv2.LINE_AA)
+    sev = r.severity or {"status": "not_annotated", "display": "not annotated"}
+    sev_color = (255, 255, 255) if sev["status"] in ("single", "agreed", "close") else (0, 165, 255)
+    cv2.putText(out, f"Severity (human, preliminary): {sev['display']}", (10, round(82 * scale)),
+                cv2.FONT_HERSHEY_SIMPLEX, scale * 0.5, sev_color, max(1, th - 1), cv2.LINE_AA)
+    for k, note in enumerate(("crop-level label, not snow pixels | uncalibrated score",
+                              "severity: research rubric, not an accessibility certification")):
+        cv2.putText(out, note, (10, h - 10 - round(16 * scale) * (1 - k)), cv2.FONT_HERSHEY_SIMPLEX, scale * 0.4, (230, 230, 230), 1, cv2.LINE_AA)
     return out
 
 
 # --------------------------------------------------------------------- the pipeline
 def run_video(video: str | Path, out_dir: str | Path, seg: Segmenter, clf, p: Params,
-              model_info: dict, max_frames: int | None = None, save_masks: bool = True) -> dict:
+              model_info: dict, max_frames: int | None = None, save_masks: bool = True,
+              severity_by_frame: dict[int, dict] | None = None) -> dict:
     cap = cv2.VideoCapture(str(video))
     if not cap.isOpened():
         raise ValueError(f"cannot open video: {video}")
@@ -224,6 +233,7 @@ def run_video(video: str | Path, out_dir: str | Path, seg: Segmenter, clf, p: Pa
         if not held:
             img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             last = analyze_frame(img, idx, idx / fps, seg, clf, p)
+            last.severity = (severity_by_frame or {}).get(idx) or consensus([])
             results.append(last)
             if save_masks:
                 Image.fromarray(last.road_mask.astype(np.uint8) * 255).save(out / "masks" / f"frame{idx:06d}_road.png")
@@ -258,6 +268,10 @@ def run_video(video: str | Path, out_dir: str | Path, seg: Segmenter, clf, p: Pa
         "models": model_info,
         "params": p.__dict__,
         "summary": {"counts": counts, "fractions": {k: v / n for k, v in counts.items()}},
+        "severity": {"rubric_version": RUBRIC_VERSION, "source": "human annotations only; no automated severity model",
+                     "disclaimer": SEVERITY_DISCLAIMER,
+                     "frames_annotated": sum(1 for r in results if r.severity and r.severity["status"] != "not_annotated"),
+                     "frames_not_annotated": sum(1 for r in results if not r.severity or r.severity["status"] == "not_annotated")},
         "limitations": LIMITATIONS,
         "frames": [r.to_json() for r in results],
         "outputs": {"annotated_video": str(out / "annotated.mp4")},
@@ -312,12 +326,14 @@ def main(argv=None):
     ap.add_argument("--min-clf-score", type=float, default=Params.min_clf_score)
     ap.add_argument("--crop-mode", choices=["masked", "box"], default=Params.crop_mode)
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--severity-dir", default=SEVERITY_DIR, help="human severity annotations (one CSV per annotator)")
     ap.add_argument("--labels", help="optional CSV (frame_index,label) of human labels to compare against")
     a = ap.parse_args(argv)
     p = Params(a.sample_fps, a.min_sidewalk_fraction, a.min_seg_confidence, a.min_clf_score, a.crop_mode)
     out = repo_path(a.out) if a.out else repo_path("outputs/video") / Path(a.video).stem
     seg, clf, info = build(a.checkpoint, a.device)
-    rep = run_video(Path(a.video).expanduser(), out, seg, clf, p, info, a.max_frames)
+    sev = consensus_by_frame(read_annotations(a.severity_dir), Path(a.video).stem)
+    rep = run_video(Path(a.video).expanduser(), out, seg, clf, p, info, a.max_frames, severity_by_frame=sev)
     print(json.dumps({"summary": rep["summary"]["counts"], "run": rep["run"], "video": rep["outputs"]}, indent=2))
     if a.labels:
         cmp = compare_with_labels(out / "predictions.json", a.labels)
