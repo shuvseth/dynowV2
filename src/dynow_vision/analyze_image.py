@@ -22,6 +22,7 @@ from .segment import DEFAULT_MODEL
 from .pipeline import (ROAD_BGR, SIDEWALK_BGR, STATUS_COLORS_BGR, STATUS_TEXT, Params, analyze_frame, build)
 from .paths import repo_path
 from .preprocessing import load_rgb
+from .snowheight import lookup_lines
 
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 H = 480
@@ -39,7 +40,7 @@ def _label(img: np.ndarray, text: str) -> np.ndarray:
     return out
 
 
-def make_panel(image: Image.Image, r) -> np.ndarray:
+def make_panel(image: Image.Image, r, extra: list[str] | None = None) -> np.ndarray:
     orig = cv2.cvtColor(np.array(image.convert("RGB")), cv2.COLOR_RGB2BGR)
     over = orig.copy()
     for mask, col in ((r.road_mask, ROAD_BGR), (r.sidewalk_mask, SIDEWALK_BGR)):
@@ -60,8 +61,12 @@ def make_panel(image: Image.Image, r) -> np.ndarray:
              _label(_fit(crop), "crop the classifier saw")]
     panel = np.hstack(parts)
     score = f" {r.predicted_class} {r.model_score:.2f}" if r.model_score is not None else ""
-    banner = np.full((54, panel.shape[1], 3), 25, np.uint8)
-    cv2.rectangle(banner, (0, 0), (14, 54), STATUS_COLORS_BGR[r.status], -1)
+    extra = extra or []
+    bh = 54 + 20 * len(extra)
+    banner = np.full((bh, panel.shape[1], 3), 25, np.uint8)
+    cv2.rectangle(banner, (0, 0), (14, bh), STATUS_COLORS_BGR[r.status], -1)
+    for k, line in enumerate(extra):
+        cv2.putText(banner, line, (24, 64 + 20 * k), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 220, 255), 1, cv2.LINE_AA)
     cv2.putText(banner, f"{STATUS_TEXT[r.status]}{score}", (24, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(banner, f"{r.reason} | sidewalk {r.sidewalk_fraction:.1%} of image", (24, 44),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (210, 210, 210), 1, cv2.LINE_AA)
@@ -88,7 +93,7 @@ def main(argv=None):
         img = load_rgb(f)
         r = analyze_frame(img, 0, 0.0, seg, clf, p)
         dest = out / f"{f.stem.replace(' ', '_')}.png"
-        cv2.imwrite(str(dest), make_panel(img, r))
+        cv2.imwrite(str(dest), make_panel(img, r, lookup_lines(f)))
         print(f"{f.name}: {r.status}" + (f" ({r.predicted_class} {r.model_score:.2f})" if r.model_score is not None else "")
               + f" -> {dest}")
         if a.open:
