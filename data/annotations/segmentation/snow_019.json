@@ -1,0 +1,36 @@
+{
+  "version": "6.3.1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "sidewalk",
+      "points": [
+        [
+          732.4050632911392,
+          99.62025316455701
+        ],
+        [
+          0.0,
+          722.5178069925515
+        ],
+        [
+          0.0,
+          957.8481012658227
+        ],
+        [
+          1260.253164556962,
+          955.3164556962025
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "polygon",
+      "flags": {},
+      "mask": null
+    }
+  ],
+  "imagePath": "snow_019.jpg",
+  "imageData": null,
+  "imageHeight": 960,
+  "imageWidth": 1280
+}
