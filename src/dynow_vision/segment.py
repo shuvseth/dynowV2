@@ -66,7 +66,9 @@ def logits_to_result(logits: torch.Tensor, image: Image.Image, id2label: dict[in
     probs = F.interpolate(logits.float(), size=(H, W), mode="bilinear", align_corners=False).softmax(1)[0]
     conf, label = probs.max(0)
     label = label.cpu().numpy().astype(np.int32)
-    road = np.isin(label, class_ids(id2label, "road"))
+    # fine-tuned sidewalk-only models have no "road" class: road mask is then empty (not guessed)
+    has_road = any(n.lower() == "road" for n in id2label.values())
+    road = np.isin(label, class_ids(id2label, "road")) if has_road else np.zeros(label.shape, bool)
     side = np.isin(label, class_ids(id2label, "sidewalk"))
     return SegmentationResult(image, label, conf.cpu().numpy(), id2label, road, side)
 

@@ -29,3 +29,9 @@ outputs/segmentation/*
 !outputs/segmentation/.gitkeep
 outputs/video/*
 !outputs/video/.gitkeep
+
+# segmentation fine-tuning (generated masks, runs, analysis pictures)
+data/segmentation/
+outputs/seg_runs/*
+outputs/analysis/
+outputs/analysis_ade/
