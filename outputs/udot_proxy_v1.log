@@ -1,0 +1,19 @@
+/Users/titli/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/swiglu_ffn.py:51: UserWarning: xFormers is not available (SwiGLU)
+  warnings.warn("xFormers is not available (SwiGLU)")
+/Users/titli/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/attention.py:33: UserWarning: xFormers is not available (Attention)
+  warnings.warn("xFormers is not available (Attention)")
+/Users/titli/.cache/torch/hub/facebookresearch_dinov2_main/dinov2/layers/block.py:40: UserWarning: xFormers is not available (Block)
+  warnings.warn("xFormers is not available (Block)")
+class weights: {'clear': 2.656682014465332, 'snow': 0.6159188151359558}
+device=mps train=2306 val=758 run=/Users/titli/DynowV2/outputs/runs/udot_proxy_v1
+epoch=0 train_loss=0.4977 train_acc=0.7914 val_loss=0.1638 val_acc=0.9551 seconds=87.8000
+epoch=1 train_loss=0.3404 train_acc=0.8673 val_loss=0.1106 val_acc=0.9604 seconds=86.1000
+epoch=2 train_loss=0.2834 train_acc=0.8851 val_loss=0.1227 val_acc=0.9723 seconds=85.7000
+epoch=3 train_loss=0.2716 train_acc=0.8912 val_loss=0.1003 val_acc=0.9644 seconds=85.6000
+epoch=4 train_loss=0.2865 train_acc=0.8855 val_loss=0.1395 val_acc=0.9631 seconds=85.9000
+epoch=5 train_loss=0.2373 train_acc=0.9003 val_loss=0.1072 val_acc=0.9736 seconds=85.9000
+epoch=6 train_loss=0.2625 train_acc=0.8981 val_loss=0.1559 val_acc=0.9525 seconds=85.9000
+epoch=7 train_loss=0.2297 train_acc=0.9063 val_loss=0.0904 val_acc=0.9763 seconds=87.2000
+epoch=8 train_loss=0.2632 train_acc=0.8899 val_loss=0.0993 val_acc=0.9565 seconds=87.0000
+epoch=9 train_loss=0.2417 train_acc=0.9024 val_loss=0.0894 val_acc=0.9710 seconds=85.9000
+best val_acc=0.9763 at epoch 7 -> /Users/titli/DynowV2/outputs/runs/udot_proxy_v1/best.pt

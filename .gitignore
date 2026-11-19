@@ -1,0 +1,29 @@
+# Environment
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# Data (images are never committed; record provenance in the manifest instead)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Model artifacts and run outputs (checkpoints are reproducible from config + manifest)
+models/*
+!models/.gitkeep
+*.pt
+*.pth
+*.ckpt
+outputs/runs/*
+!outputs/runs/.gitkeep
+outputs/predictions/*
+!outputs/predictions/.gitkeep
+outputs/evaluation/*
+!outputs/evaluation/.gitkeep
+*.egg-info/
+outputs/segmentation/*
+!outputs/segmentation/.gitkeep

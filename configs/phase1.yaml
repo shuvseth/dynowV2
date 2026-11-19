@@ -1,0 +1,19 @@
+# Phase 1: frozen DINOv2 ViT-S/14 + trainable linear head, binary clear vs snow.
+seed: 42
+device: auto            # auto | mps | cpu
+manifest: data/annotations/manifest.csv
+raw_dir: data/raw
+classes: [clear, snow]
+backbone: dinov2_vits14
+input_size: 224         # must be a multiple of the patch size (14)
+head_hidden: 0          # 0 = single linear layer; >0 adds one hidden layer of that width
+head_dropout: 0.2
+epochs: 30
+batch_size: 16
+lr: 0.001
+weight_decay: 0.01
+num_workers: 0
+output_root: outputs/runs
+run_name: null          # null = timestamp
+# Refuse to train on data too small to say anything (override only for plumbing tests).
+min_per_class: {train: 10, val: 3, test: 3}

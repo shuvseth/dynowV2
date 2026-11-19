@@ -1,0 +1,10 @@
+torch>=2.2
+torchvision>=0.17
+numpy
+pillow
+matplotlib
+scikit-learn
+pyyaml
+opencv-python-headless
+pytest
+transformers
