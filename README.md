@@ -122,6 +122,14 @@ python -m dynow_vision.severity status
 python -m dynow_vision.pipeline --video clip.mp4 --checkpoint outputs/runs/udot_proxy_v1/best.pt   # picks up data/annotations/severity/
 ```
 
+## Demo: send in photos, see what the model says
+
+```bash
+python -m dynow_vision.demo --images "path/to/photo_or_folder"   # table + a picture per photo in outputs/demo/results/
+python -m dynow_vision.demo --watch demo_inputs                    # drop photos into the folder; each result pops up
+```
+Uses the trained sidewalk finder (`outputs/seg_runs/seg_v1/best`) and classifier (`outputs/runs/pooled_v1/best.pt`); see [CROPS.md](CROPS.md) and [SEGLABEL.md](SEGLABEL.md). Models are git-ignored, so they only exist on the machine that trained them.
+
 ## Layout
 
 `src/dynow_vision/` code · `configs/` run configs · `data/` (images are git-ignored; manifest is tracked) · `outputs/` run artifacts (git-ignored) · `tests/`
