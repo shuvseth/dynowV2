@@ -59,3 +59,17 @@ def test_metrics_math():
     assert m["accuracy"] == 0.75 and m["confusion_matrix"] == [[1, 1], [0, 2]]
     assert m["per_class"]["snow"]["precision"] == pytest.approx(2 / 3)
     assert m["preliminary"] is True
+
+
+def test_apply_repeats(workspace):
+    from dynow_vision.dataset import WinterDataset
+    from dynow_vision.preprocessing import eval_transform
+    from dynow_vision.train import apply_repeats
+    rows = make_splits(read_manifest(workspace["manifest"]))
+    ds = WinterDataset(rows, "train", eval_transform(224), workspace["raw"])
+    n0 = len(ds)
+    first = ds.items[0]["filename"]
+    apply_repeats(ds, {first: 5})
+    assert len(ds) == n0 + 4 and sum(r["filename"] == first for r in ds.items) == 5
+    apply_repeats(ds, None)
+    assert len(ds) == n0 + 4

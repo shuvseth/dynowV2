@@ -35,3 +35,9 @@ Each run directory `outputs/runs/<run_name>/` contains `config.yaml`, `environme
 - **Validation (what we have):** best checkpoint epoch 7, val accuracy 0.9763, val loss 0.0904. Validation is 88% snow, so always predicting snow scores ~88%; per-class recall has not been inspected yet. Val accuracy moved between 0.953 and 0.976 across epochs, which is noise-level for this size.
 - **Test results:** none. The held-out test split and the 19-image sidewalk folder have deliberately NOT been used. Do not quote a test number until `evaluate` has been run once.
 - **Caveat:** the model was trained on dashcam road views. It has not been shown to work on sidewalk photos.
+
+### Run `udot_plus10_v1` (2026-11-19): UDOT roads + 10 snowy sidewalk photos
+
+- **Data:** same as `udot_proxy_v1` plus 10 web-collected snowy sidewalk photos (all labeled `snow`, forced into train, repeated x10 per epoch via `repeat` in `configs/udot_plus10.yaml`). 3 of the 19 photos were excluded from the pool (two stock-photo watermarks, one identifiable person). The other 9 photos have never been used for training or evaluation. Their license is UNKNOWN: internal experiment only, do not redistribute.
+- **Validation (UDOT only):** best val accuracy 0.9815 at epoch 4 (val loss 0.0853); epochs ranged 0.934-0.982. Validation contains no sidewalk images, so it says nothing about sidewalks.
+- **Limits:** the 10 sidewalk images are all `snow`, so no clear sidewalks were seen; the model may learn "sidewalk-looking = snow". No test result exists for this run.

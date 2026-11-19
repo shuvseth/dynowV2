@@ -34,6 +34,7 @@ Record every source here when images are added (the manifest holds per-image det
 
 | source | license | images | notes |
 |---|---|---|---|
+| User-collected web images (10 of 19 in Downloads/'Test set '), origins unknown | UNKNOWN, internal experiment only | 10 (snow) | sidewalk views; manifest rows under `sidewalk_web/`, forced into train |
 | Roboflow Universe, UDOT WINTER ROAD CONDITIONS v1 | CC BY 4.0 per listing (verify) | 3848 (Snow+Clear) | dashcam road views; groups approximated from filenames |
 
 Images are not committed to git (`data/raw/` is ignored). Only add images you have the right to use.

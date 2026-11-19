@@ -49,6 +49,18 @@ def git_commit() -> str:
         return "unknown"
 
 
+def apply_repeats(ds: WinterDataset, repeat: dict | None) -> None:
+    """Repeat train items whose filename starts with a key (each repeat is augmented differently).
+    Used to give a tiny but important image group more weight; the true image count is unchanged."""
+    if not repeat:
+        return
+    items = []
+    for r in ds.items:
+        n = next((v for k, v in repeat.items() if r["filename"].startswith(k)), 1)
+        items.extend([r] * int(n))
+    ds.items = items
+
+
 def check_enough_data(rows: list[dict], cfg: dict) -> None:
     """Refuse to train on data that cannot support a meaningful run."""
     counts = {sp: {c: 0 for c in cfg["classes"]} for sp in SPLITS}
@@ -90,6 +102,7 @@ def train(cfg: dict, resume: str | None = None) -> Path:
 
     size, classes = cfg["input_size"], tuple(cfg["classes"])
     train_ds = WinterDataset(rows, "train", train_transform(size), cfg["raw_dir"], classes)
+    apply_repeats(train_ds, cfg.get("repeat"))
     val_ds = WinterDataset(rows, "val", eval_transform(size), cfg["raw_dir"], classes)
     g = torch.Generator().manual_seed(cfg["seed"])
     train_dl = DataLoader(train_ds, cfg["batch_size"], shuffle=True, generator=g,
